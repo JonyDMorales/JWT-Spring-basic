@@ -5,10 +5,17 @@ import org.springframework.stereotype.Service;
 
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import java.security.Key;
-import java.security.KeyPair;
-import java.security.PrivateKey;
-import java.security.PublicKey;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.*;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Map;
 
 
@@ -20,9 +27,34 @@ public class SecurityJWT {
     private PublicKey publicKey;
 
     public SecurityJWT(){
+
+        Path path = Paths.get("Private.key");
+        try{
+            byte[] bytes = Files.readAllBytes(path);
+
+            /* Generate private key. */
+            PKCS8EncodedKeySpec ks = new PKCS8EncodedKeySpec(bytes);
+            KeyFactory kf = KeyFactory.getInstance("RSA");
+            privateKey = kf.generatePrivate(ks);
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+        }
+
+        /*
         KeyPair keyPair = Keys.keyPairFor(SignatureAlgorithm.RS256);
         privateKey = (PrivateKey) keyPair.getPrivate();
         publicKey = (PublicKey) keyPair.getPublic();
+        try {
+            FileOutputStream privateFileKey = new FileOutputStream("Private.key");
+            privateFileKey.write(privateKey.getEncoded());
+            privateFileKey.close();
+
+            FileOutputStream publicFileKey = new FileOutputStream("Public.key");
+            publicFileKey.write(publicKey.getEncoded());
+            publicFileKey.close();
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+        }*/
         //key = Keys.secretKeyFor(SignatureAlgorithm.HS256);
     }
 
@@ -31,6 +63,15 @@ public class SecurityJWT {
     }
 
     public Map<String,Object> decrypt(String mapClaims){
+        Path path = Paths.get("Public.key");
+        try {
+            byte[] bytes = Files.readAllBytes(path);
+            X509EncodedKeySpec ks = new X509EncodedKeySpec(bytes);
+            KeyFactory kf = KeyFactory.getInstance("RSA");
+            publicKey = kf.generatePublic(ks);
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+        }
         return Jwts.parser().setSigningKey(publicKey).parseClaimsJws(mapClaims).getBody();
     }
 }
